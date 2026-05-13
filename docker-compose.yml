@@ -1,0 +1,26 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      LABELZONE_DEFAULT_LOCALE: zh-CN
+      LABELZONE_LOCAL_STORAGE_ROOT: /data/files
+      LABELZONE_DATABASE_URL: sqlite:////data/db/labelzone.sqlite3
+      LABELZONE_STORAGE_BACKEND: local
+    volumes:
+      - labelzone-data:/data
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  labelzone-data:
