@@ -21,7 +21,7 @@ class SQLiteRepository:
         self.init_schema()
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.database_path, check_same_thread=False)
+        connection = sqlite3.connect(self.database_path, timeout=30)
         connection.row_factory = sqlite3.Row
         return connection
 
@@ -58,29 +58,38 @@ class SQLiteRepository:
             )
 
     def _save(self, table: str, model: BaseModel, **columns: str) -> None:
-        names = ["id", *columns.keys(), "data"]
-        values = [getattr(model, "id"), *columns.values(), model.model_dump_json()]
-        placeholders = ", ".join("?" for _ in names)
-        update_columns = ", ".join(f"{name}=excluded.{name}" for name in names if name != "id")
+        save_queries = {
+            "datasets": "INSERT INTO datasets (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data=excluded.data",
+            "images": "INSERT INTO images (id, dataset_id, data) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET dataset_id=excluded.dataset_id, data=excluded.data",
+            "exports": "INSERT INTO exports (id, dataset_id, data) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET dataset_id=excluded.dataset_id, data=excluded.data",
+            "training_jobs": "INSERT INTO training_jobs (id, dataset_id, data) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET dataset_id=excluded.dataset_id, data=excluded.data",
+        }
+        query = save_queries[table]
+        values = (getattr(model, "id"), model.model_dump_json()) if table == "datasets" else (getattr(model, "id"), columns["dataset_id"], model.model_dump_json())
         with self._connect() as connection:
-            connection.execute(
-                f"INSERT INTO {table} ({', '.join(names)}) VALUES ({placeholders}) ON CONFLICT(id) DO UPDATE SET {update_columns}",
-                values,
-            )
+            connection.execute(query, values)
 
     def _get(self, table: str, id_column: str, item_id: str, model_type: type[ModelT]) -> ModelT | None:
+        get_queries = {
+            ("datasets", "id"): "SELECT data FROM datasets WHERE id = ?",
+            ("images", "id"): "SELECT data FROM images WHERE id = ?",
+            ("annotations", "image_id"): "SELECT data FROM annotations WHERE image_id = ?",
+            ("exports", "id"): "SELECT data FROM exports WHERE id = ?",
+            ("training_jobs", "id"): "SELECT data FROM training_jobs WHERE id = ?",
+        }
         with self._connect() as connection:
-            row = connection.execute(f"SELECT data FROM {table} WHERE {id_column} = ?", (item_id,)).fetchone()
+            row = connection.execute(get_queries[(table, id_column)], (item_id,)).fetchone()
         return model_type.model_validate_json(row["data"]) if row else None
 
     def _list(self, table: str, model_type: type[ModelT], where: tuple[str, str] | None = None) -> list[ModelT]:
-        query = f"SELECT data FROM {table}"
-        params: tuple[str, ...] = ()
-        if where:
-            query = f"{query} WHERE {where[0]} = ?"
-            params = (where[1],)
+        list_queries = {
+            ("datasets", None): "SELECT data FROM datasets",
+            ("images", "dataset_id"): "SELECT data FROM images WHERE dataset_id = ?",
+        }
+        key = (table, where[0] if where else None)
+        params = (where[1],) if where else ()
         with self._connect() as connection:
-            rows = connection.execute(query, params).fetchall()
+            rows = connection.execute(list_queries[key], params).fetchall()
         return [model_type.model_validate_json(row["data"]) for row in rows]
 
     def save_dataset(self, dataset: Dataset) -> None:
@@ -117,10 +126,10 @@ class SQLiteRepository:
     def list_annotations_for_images(self, image_ids: set[str]) -> list[Annotation]:
         if not image_ids:
             return []
-        placeholders = ", ".join("?" for _ in image_ids)
         with self._connect() as connection:
-            rows = connection.execute(f"SELECT data FROM annotations WHERE image_id IN ({placeholders})", tuple(image_ids)).fetchall()
-        return [Annotation.model_validate_json(row["data"]) for row in rows]
+            rows = connection.execute("SELECT data FROM annotations").fetchall()
+        annotations = [Annotation.model_validate_json(row["data"]) for row in rows]
+        return [annotation for annotation in annotations if annotation.image_id in image_ids]
 
     def save_export(self, job: ExportJob) -> None:
         self._save("exports", job, dataset_id=job.dataset_id)

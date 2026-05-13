@@ -1,5 +1,6 @@
 import base64
 import binascii
+import os
 from pathlib import Path
 from typing import Protocol
 
@@ -27,7 +28,7 @@ class LocalStorageAdapter:
 
     def _safe_path(self, relative_path: str) -> Path:
         target = (self.root / relative_path).resolve()
-        if target != self.root and self.root not in target.parents:
+        if os.path.commonpath([str(self.root), str(target)]) != str(self.root):
             raise ValueError("path escapes storage root")
         target.parent.mkdir(parents=True, exist_ok=True)
         return target
