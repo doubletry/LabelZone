@@ -27,7 +27,7 @@ class LocalStorageAdapter:
 
     def _safe_path(self, relative_path: str) -> Path:
         target = (self.root / relative_path).resolve()
-        if target != self.root and not target.is_relative_to(self.root):
+        if not target.is_relative_to(self.root):
             raise ValueError("path escapes storage root")
         target.parent.mkdir(parents=True, exist_ok=True)
         return target

@@ -66,7 +66,10 @@ class SQLiteRepository:
             "training_jobs": "INSERT INTO training_jobs (id, dataset_id, data) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET dataset_id=excluded.dataset_id, data=excluded.data",
         }
         query = save_queries[table]
-        values = (getattr(model, "id"), model.model_dump_json()) if table == "datasets" else (getattr(model, "id"), columns["dataset_id"], model.model_dump_json())
+        if table == "datasets":
+            values = (getattr(model, "id"), model.model_dump_json())
+        else:
+            values = (getattr(model, "id"), columns["dataset_id"], model.model_dump_json())
         with self._connect() as connection:
             connection.execute(query, values)
 
