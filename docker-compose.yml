@@ -5,7 +5,8 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       LABELZONE_DEFAULT_LOCALE: zh-CN
-      LABELZONE_LOCAL_STORAGE_ROOT: /data
+      LABELZONE_LOCAL_STORAGE_ROOT: /data/files
+      LABELZONE_DATABASE_URL: sqlite:////data/db/labelzone.sqlite3
       LABELZONE_STORAGE_BACKEND: local
     volumes:
       - labelzone-data:/data
@@ -13,13 +14,11 @@ services:
       - "8000:8000"
 
   frontend:
-    image: node:24-slim
-    working_dir: /app/frontend
-    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
-    volumes:
-      - .:/app
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
     ports:
-      - "5173:5173"
+      - "8080:80"
     depends_on:
       - backend
 

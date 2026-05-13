@@ -1,0 +1,24 @@
+services:
+  rustfs:
+    image: rustfs/rustfs:latest
+    environment:
+      RUSTFS_ACCESS_KEY: labelzone
+      RUSTFS_SECRET_KEY: change-me-long-secret
+    volumes:
+      - rustfs-data:/data
+    ports:
+      - "9000:9000"
+
+  backend:
+    environment:
+      LABELZONE_STORAGE_BACKEND: rustfs
+      LABELZONE_RUSTFS_ENDPOINT: http://rustfs:9000
+      LABELZONE_RUSTFS_BUCKET: labelzone
+      LABELZONE_RUSTFS_ACCESS_KEY: labelzone
+      LABELZONE_RUSTFS_SECRET_KEY: change-me-long-secret
+      LABELZONE_RUSTFS_SECURE: "false"
+    depends_on:
+      - rustfs
+
+volumes:
+  rustfs-data:
