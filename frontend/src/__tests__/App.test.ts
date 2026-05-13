@@ -7,7 +7,7 @@ describe('App', () => {
     const wrapper = mount(App, { global: { stubs: ['ElButton', 'ElCard', 'ElTag'] } })
     expect(wrapper.text()).toContain('LabelZone 标注平台')
     expect(wrapper.text()).toContain('避免中文乱码')
-    await wrapper.find('elbutton-stub').trigger('click')
+    await wrapper.find('button').trigger('click')
     expect(wrapper.text()).toContain('Private annotation')
   })
 })
