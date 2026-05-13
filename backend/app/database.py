@@ -1,0 +1,135 @@
+import sqlite3
+from pathlib import Path
+from typing import TypeVar
+
+from pydantic import BaseModel
+
+from .models import Annotation, Dataset, ExportJob, Image, TrainingJob
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
+
+
+class SQLiteRepository:
+    """Small SQLite repository used by the API until external services are added."""
+
+    def __init__(self, database_url: str):
+        if not database_url.startswith("sqlite:///"):
+            raise ValueError("only sqlite:/// database URLs are currently supported")
+        self.database_path = database_url.removeprefix("sqlite:///")
+        if self.database_path != ":memory:":
+            Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
+        self.init_schema()
+
+    def _connect(self) -> sqlite3.Connection:
+        connection = sqlite3.connect(self.database_path, check_same_thread=False)
+        connection.row_factory = sqlite3.Row
+        return connection
+
+    def init_schema(self) -> None:
+        with self._connect() as connection:
+            connection.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS datasets (
+                    id TEXT PRIMARY KEY,
+                    data TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS images (
+                    id TEXT PRIMARY KEY,
+                    dataset_id TEXT NOT NULL,
+                    data TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_images_dataset_id ON images(dataset_id);
+                CREATE TABLE IF NOT EXISTS annotations (
+                    image_id TEXT PRIMARY KEY,
+                    id TEXT NOT NULL,
+                    data TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS exports (
+                    id TEXT PRIMARY KEY,
+                    dataset_id TEXT NOT NULL,
+                    data TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS training_jobs (
+                    id TEXT PRIMARY KEY,
+                    dataset_id TEXT NOT NULL,
+                    data TEXT NOT NULL
+                );
+                """
+            )
+
+    def _save(self, table: str, model: BaseModel, **columns: str) -> None:
+        names = ["id", *columns.keys(), "data"]
+        values = [getattr(model, "id"), *columns.values(), model.model_dump_json()]
+        placeholders = ", ".join("?" for _ in names)
+        update_columns = ", ".join(f"{name}=excluded.{name}" for name in names if name != "id")
+        with self._connect() as connection:
+            connection.execute(
+                f"INSERT INTO {table} ({', '.join(names)}) VALUES ({placeholders}) ON CONFLICT(id) DO UPDATE SET {update_columns}",
+                values,
+            )
+
+    def _get(self, table: str, id_column: str, item_id: str, model_type: type[ModelT]) -> ModelT | None:
+        with self._connect() as connection:
+            row = connection.execute(f"SELECT data FROM {table} WHERE {id_column} = ?", (item_id,)).fetchone()
+        return model_type.model_validate_json(row["data"]) if row else None
+
+    def _list(self, table: str, model_type: type[ModelT], where: tuple[str, str] | None = None) -> list[ModelT]:
+        query = f"SELECT data FROM {table}"
+        params: tuple[str, ...] = ()
+        if where:
+            query = f"{query} WHERE {where[0]} = ?"
+            params = (where[1],)
+        with self._connect() as connection:
+            rows = connection.execute(query, params).fetchall()
+        return [model_type.model_validate_json(row["data"]) for row in rows]
+
+    def save_dataset(self, dataset: Dataset) -> None:
+        self._save("datasets", dataset)
+
+    def get_dataset(self, dataset_id: str) -> Dataset | None:
+        return self._get("datasets", "id", dataset_id, Dataset)
+
+    def list_datasets(self) -> list[Dataset]:
+        return self._list("datasets", Dataset)
+
+    def save_image(self, image: Image) -> None:
+        self._save("images", image, dataset_id=image.dataset_id)
+
+    def get_image(self, image_id: str) -> Image | None:
+        return self._get("images", "id", image_id, Image)
+
+    def list_images(self, dataset_id: str) -> list[Image]:
+        return self._list("images", Image, ("dataset_id", dataset_id))
+
+    def save_annotation(self, annotation: Annotation) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO annotations (image_id, id, data) VALUES (?, ?, ?)
+                ON CONFLICT(image_id) DO UPDATE SET id=excluded.id, data=excluded.data
+                """,
+                (annotation.image_id, annotation.id, annotation.model_dump_json()),
+            )
+
+    def get_annotation(self, image_id: str) -> Annotation | None:
+        return self._get("annotations", "image_id", image_id, Annotation)
+
+    def list_annotations_for_images(self, image_ids: set[str]) -> list[Annotation]:
+        if not image_ids:
+            return []
+        placeholders = ", ".join("?" for _ in image_ids)
+        with self._connect() as connection:
+            rows = connection.execute(f"SELECT data FROM annotations WHERE image_id IN ({placeholders})", tuple(image_ids)).fetchall()
+        return [Annotation.model_validate_json(row["data"]) for row in rows]
+
+    def save_export(self, job: ExportJob) -> None:
+        self._save("exports", job, dataset_id=job.dataset_id)
+
+    def get_export(self, export_id: str) -> ExportJob | None:
+        return self._get("exports", "id", export_id, ExportJob)
+
+    def save_training_job(self, job: TrainingJob) -> None:
+        self._save("training_jobs", job, dataset_id=job.dataset_id)
+
+    def get_training_job(self, job_id: str) -> TrainingJob | None:
+        return self._get("training_jobs", "id", job_id, TrainingJob)

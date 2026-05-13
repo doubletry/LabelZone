@@ -1,3 +1,9 @@
+import os
+import tempfile
+
+os.environ.setdefault("LABELZONE_DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/labelzone-test.sqlite3")
+os.environ.setdefault("LABELZONE_LOCAL_STORAGE_ROOT", tempfile.mkdtemp())
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -28,6 +34,7 @@ def test_dataset_image_annotation_export_and_training_flow() -> None:
         },
     )
     assert annotation.status_code == 200
+    assert client.get(f"/api/datasets/{dataset['id']}/images").json()[0]["filename"] == "image-001.txt"
     export = client.post(f"/api/datasets/{dataset['id']}/exports", json={"format": "coco"}).json()
     assert export["status"] == "succeeded"
     assert export["artifact_uri"].startswith("local://")
