@@ -127,9 +127,17 @@ class SQLiteRepository:
         if not image_ids:
             return []
         with self._connect() as connection:
-            rows = connection.execute("SELECT data FROM annotations").fetchall()
-        annotations = [Annotation.model_validate_json(row["data"]) for row in rows]
-        return [annotation for annotation in annotations if annotation.image_id in image_ids]
+            connection.execute("CREATE TEMP TABLE selected_image_ids (image_id TEXT PRIMARY KEY)")
+            connection.executemany("INSERT INTO selected_image_ids (image_id) VALUES (?)", [(image_id,) for image_id in image_ids])
+            rows = connection.execute(
+                """
+                SELECT annotations.data
+                FROM annotations
+                JOIN selected_image_ids ON selected_image_ids.image_id = annotations.image_id
+                """
+            ).fetchall()
+            connection.execute("DROP TABLE selected_image_ids")
+        return [Annotation.model_validate_json(row["data"]) for row in rows]
 
     def save_export(self, job: ExportJob) -> None:
         self._save("exports", job, dataset_id=job.dataset_id)

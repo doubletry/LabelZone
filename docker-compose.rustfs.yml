@@ -2,8 +2,9 @@ services:
   rustfs:
     image: rustfs/rustfs:latest
     environment:
-      RUSTFS_ACCESS_KEY: labelzone
-      RUSTFS_SECRET_KEY: change-me-long-secret
+      # Set these in your shell or .env file before deployment; do not commit production credentials.
+      RUSTFS_ACCESS_KEY: ${LABELZONE_RUSTFS_ACCESS_KEY:?set LABELZONE_RUSTFS_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${LABELZONE_RUSTFS_SECRET_KEY:?set LABELZONE_RUSTFS_SECRET_KEY}
     volumes:
       - rustfs-data:/data
     ports:
@@ -13,9 +14,9 @@ services:
     environment:
       LABELZONE_STORAGE_BACKEND: rustfs
       LABELZONE_RUSTFS_ENDPOINT: http://rustfs:9000
-      LABELZONE_RUSTFS_BUCKET: labelzone
-      LABELZONE_RUSTFS_ACCESS_KEY: labelzone
-      LABELZONE_RUSTFS_SECRET_KEY: change-me-long-secret
+      LABELZONE_RUSTFS_BUCKET: ${LABELZONE_RUSTFS_BUCKET:-labelzone}
+      LABELZONE_RUSTFS_ACCESS_KEY: ${LABELZONE_RUSTFS_ACCESS_KEY:?set LABELZONE_RUSTFS_ACCESS_KEY}
+      LABELZONE_RUSTFS_SECRET_KEY: ${LABELZONE_RUSTFS_SECRET_KEY:?set LABELZONE_RUSTFS_SECRET_KEY}
       LABELZONE_RUSTFS_SECURE: "false"
     depends_on:
       - rustfs

@@ -53,10 +53,13 @@ This starts:
 ### Docker deployment with RustFS
 
 ```bash
+export LABELZONE_RUSTFS_ACCESS_KEY=<access-key>
+export LABELZONE_RUSTFS_SECRET_KEY=<secret-key>
+export LABELZONE_RUSTFS_BUCKET=labelzone
 docker compose -f docker-compose.yml -f docker-compose.rustfs.yml up --build -d
 ```
 
-Before production use, change the RustFS access key, secret key, bucket policy, and network exposure in `docker-compose.rustfs.yml`.
+Before production use, create dedicated RustFS credentials, set them through environment variables or a secret manager, and review the bucket policy and network exposure.
 
 ## Database configuration
 
@@ -77,7 +80,7 @@ LABELZONE_STORAGE_BACKEND=rustfs
 LABELZONE_RUSTFS_ENDPOINT=http://rustfs:9000
 LABELZONE_RUSTFS_BUCKET=labelzone
 LABELZONE_RUSTFS_ACCESS_KEY=labelzone
-LABELZONE_RUSTFS_SECRET_KEY=change-me
+LABELZONE_RUSTFS_SECRET_KEY=<secret-key>
 LABELZONE_RUSTFS_SECURE=false
 ```
 

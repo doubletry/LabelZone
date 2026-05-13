@@ -88,6 +88,9 @@ Operational notes:
 Use the RustFS Compose overlay:
 
 ```bash
+export LABELZONE_RUSTFS_ACCESS_KEY=<access-key>
+export LABELZONE_RUSTFS_SECRET_KEY=<secret-key>
+export LABELZONE_RUSTFS_BUCKET=labelzone
 docker compose -f docker-compose.yml -f docker-compose.rustfs.yml up --build -d
 ```
 

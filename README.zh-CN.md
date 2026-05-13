@@ -53,10 +53,13 @@ curl 'http://localhost:8000/api/health?locale=zh-CN'
 ### 使用 RustFS 的 Docker 部署
 
 ```bash
+export LABELZONE_RUSTFS_ACCESS_KEY=<access-key>
+export LABELZONE_RUSTFS_SECRET_KEY=<secret-key>
+export LABELZONE_RUSTFS_BUCKET=labelzone
 docker compose -f docker-compose.yml -f docker-compose.rustfs.yml up --build -d
 ```
 
-生产环境上线前，请修改 `docker-compose.rustfs.yml` 中的 RustFS access key、secret key、桶策略和网络暴露方式。
+生产环境上线前，请创建专用 RustFS 凭据，通过环境变量或密钥管理系统注入，并检查桶策略和网络暴露方式。
 
 ## 数据库接入
 
@@ -77,7 +80,7 @@ LABELZONE_STORAGE_BACKEND=rustfs
 LABELZONE_RUSTFS_ENDPOINT=http://rustfs:9000
 LABELZONE_RUSTFS_BUCKET=labelzone
 LABELZONE_RUSTFS_ACCESS_KEY=labelzone
-LABELZONE_RUSTFS_SECRET_KEY=change-me
+LABELZONE_RUSTFS_SECRET_KEY=<secret-key>
 LABELZONE_RUSTFS_SECURE=false
 ```
 

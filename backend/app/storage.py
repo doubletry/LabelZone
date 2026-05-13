@@ -1,6 +1,5 @@
 import base64
 import binascii
-import os
 from pathlib import Path
 from typing import Protocol
 
@@ -28,7 +27,7 @@ class LocalStorageAdapter:
 
     def _safe_path(self, relative_path: str) -> Path:
         target = (self.root / relative_path).resolve()
-        if os.path.commonpath([str(self.root), str(target)]) != str(self.root):
+        if target != self.root and not target.is_relative_to(self.root):
             raise ValueError("path escapes storage root")
         target.parent.mkdir(parents=True, exist_ok=True)
         return target
@@ -97,10 +96,15 @@ class RustFSStorageAdapter:
         if not uri.startswith(prefix):
             return False
         key = uri.removeprefix(prefix)
+        from botocore.exceptions import ClientError
+
         try:
             self.client.head_object(Bucket=self.bucket, Key=key)
-        except Exception:
-            return False
+        except ClientError as exc:
+            status_code = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+            if status_code == 404:
+                return False
+            raise
         return True
 
 
