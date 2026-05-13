@@ -16,6 +16,12 @@ LabelZone 是面向企业私有化环境的中英文双语图片标注平台。�
 - COCO/YOLO 风格导出任务接口
 - 可与独立 GPU 训练服务对接的训练队列接口
 
+## 环境要求
+
+- 后端使用 Python 3.12+
+- 前端使用 Node.js 24+
+- 容器部署需要 Docker 和 Compose
+
 ## 快速启动
 
 ### 后端
@@ -53,6 +59,7 @@ curl 'http://localhost:8000/api/health?locale=zh-CN'
 ### 使用 RustFS 的 Docker 部署
 
 ```bash
+export RUSTFS_IMAGE=rustfs/rustfs:<pinned-version>
 export LABELZONE_RUSTFS_ACCESS_KEY=<access-key>
 export LABELZONE_RUSTFS_SECRET_KEY=<secret-key>
 export LABELZONE_RUSTFS_BUCKET=labelzone

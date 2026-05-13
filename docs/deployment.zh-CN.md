@@ -88,6 +88,7 @@ LABELZONE_DATABASE_URL=sqlite:////data/db/labelzone.sqlite3
 使用 RustFS Compose 覆盖文件：
 
 ```bash
+export RUSTFS_IMAGE=rustfs/rustfs:<pinned-version>
 export LABELZONE_RUSTFS_ACCESS_KEY=<access-key>
 export LABELZONE_RUSTFS_SECRET_KEY=<secret-key>
 export LABELZONE_RUSTFS_BUCKET=labelzone

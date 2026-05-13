@@ -16,6 +16,12 @@ LabelZone is a private bilingual image annotation platform for enterprise enviro
 - COCO/YOLO-style export job endpoint
 - GPU training queue API surface for integration with a separate training service
 
+## Requirements
+
+- Python 3.12+ for the backend
+- Node.js 24+ for the frontend
+- Docker with Compose for container deployment
+
 ## Quick start
 
 ### Backend
@@ -53,6 +59,7 @@ This starts:
 ### Docker deployment with RustFS
 
 ```bash
+export RUSTFS_IMAGE=rustfs/rustfs:<pinned-version>
 export LABELZONE_RUSTFS_ACCESS_KEY=<access-key>
 export LABELZONE_RUSTFS_SECRET_KEY=<secret-key>
 export LABELZONE_RUSTFS_BUCKET=labelzone

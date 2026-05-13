@@ -1,6 +1,6 @@
 services:
   rustfs:
-    image: rustfs/rustfs:latest
+    image: ${RUSTFS_IMAGE:?set RUSTFS_IMAGE to a pinned RustFS image tag}
     environment:
       # Set these in your shell or .env file before deployment; do not commit production credentials.
       RUSTFS_ACCESS_KEY: ${LABELZONE_RUSTFS_ACCESS_KEY:?set LABELZONE_RUSTFS_ACCESS_KEY}

@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from pathlib import Path
 from typing import TypeVar
@@ -127,16 +128,14 @@ class SQLiteRepository:
         if not image_ids:
             return []
         with self._connect() as connection:
-            connection.execute("CREATE TEMP TABLE selected_image_ids (image_id TEXT PRIMARY KEY)")
-            connection.executemany("INSERT INTO selected_image_ids (image_id) VALUES (?)", [(image_id,) for image_id in image_ids])
             rows = connection.execute(
                 """
-                SELECT annotations.data
+                SELECT data
                 FROM annotations
-                JOIN selected_image_ids ON selected_image_ids.image_id = annotations.image_id
-                """
+                WHERE image_id IN (SELECT value FROM json_each(?))
+                """,
+                (json.dumps(list(image_ids)),),
             ).fetchall()
-            connection.execute("DROP TABLE selected_image_ids")
         return [Annotation.model_validate_json(row["data"]) for row in rows]
 
     def save_export(self, job: ExportJob) -> None:
